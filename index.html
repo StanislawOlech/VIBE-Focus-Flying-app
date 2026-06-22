@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Focus Flying — Live Flight Tracker</title>
+    <meta
+      name="description"
+      content="Pick an airport on the map, choose a departing flight, wait for takeoff, and track it live."
+    />
+
+    <!-- Leaflet (map library) from CDN. Falls back gracefully if offline. -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- ============================ HEADER ============================ -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true">✈</span>
+        <div class="brand-text">
+          <h1>Focus Flying</h1>
+          <p>Map → Airport → Departure → Takeoff → Live Track</p>
+        </div>
+      </div>
+
+      <div class="topbar-controls">
+        <span id="mode-badge" class="badge badge-demo" title="Current data source">
+          DEMO MODE
+        </span>
+
+        <div class="audio-controls" id="audio-controls">
+          <button id="audio-toggle" class="icon-btn" title="Mute / unmute ambience" aria-pressed="false">
+            <span id="audio-icon">🔈</span>
+          </button>
+          <input
+            id="volume-slider"
+            class="volume-slider"
+            type="range"
+            min="0"
+            max="100"
+            value="50"
+            aria-label="Volume"
+          />
+          <span id="audio-label" class="audio-label">Audio: off</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============================ BODY ============================ -->
+    <main class="layout">
+      <!-- -------- SIDEBAR -------- -->
+      <aside class="sidebar" id="sidebar">
+        <!-- Airport search / selection -->
+        <section class="panel" id="airport-panel">
+          <div class="panel-header">
+            <h2>1 · Choose an airport</h2>
+          </div>
+          <div class="search-wrap">
+            <input
+              id="airport-search"
+              type="text"
+              class="text-input"
+              placeholder="Search name, IATA or ICAO… (e.g. JFK)"
+              autocomplete="off"
+            />
+            <ul id="search-results" class="search-results" hidden></ul>
+          </div>
+
+          <div id="airport-details" class="airport-details empty">
+            <p class="hint">Click an airport pin on the map, or search above.</p>
+          </div>
+        </section>
+
+        <!-- Departures list -->
+        <section class="panel" id="departures-panel">
+          <div class="panel-header">
+            <h2>2 · Departures</h2>
+            <button id="refresh-departures" class="text-btn" hidden>↻ Refresh</button>
+          </div>
+          <div id="departures-list" class="departures-list">
+            <p class="hint empty-state">Select an airport to see departing flights.</p>
+          </div>
+        </section>
+
+        <!-- Selected flight / tracking -->
+        <section class="panel" id="flight-panel" hidden>
+          <div class="panel-header">
+            <h2>3 · Selected flight</h2>
+            <button id="cancel-flight" class="text-btn">✕ Clear</button>
+          </div>
+          <div id="flight-detail" class="flight-detail"></div>
+        </section>
+      </aside>
+
+      <!-- -------- MAP -------- -->
+      <section class="map-wrap">
+        <div id="map" class="map"></div>
+
+        <!-- Floating tracking HUD -->
+        <div id="track-hud" class="track-hud" hidden>
+          <div class="hud-row hud-title">
+            <span id="hud-flight">—</span>
+            <button id="follow-toggle" class="chip chip-active" title="Auto-follow aircraft">
+              ⦿ Follow
+            </button>
+          </div>
+          <div class="hud-route">
+            <span id="hud-origin">—</span>
+            <span class="hud-arrow">→</span>
+            <span id="hud-dest">—</span>
+          </div>
+          <div class="hud-grid">
+            <div><label>Altitude</label><span id="hud-alt">—</span></div>
+            <div><label>Speed</label><span id="hud-speed">—</span></div>
+            <div><label>Heading</label><span id="hud-hdg">—</span></div>
+            <div><label>Progress</label><span id="hud-progress">—</span></div>
+          </div>
+          <div class="hud-updated">Updated <span id="hud-updated">—</span></div>
+        </div>
+
+        <!-- Map loading overlay -->
+        <div id="map-loading" class="map-loading">
+          <div class="spinner"></div>
+          <p>Loading map…</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============================ STATUS BAR ============================ -->
+    <footer class="statusbar">
+      <div class="status-left">
+        <span id="status-dot" class="status-dot"></span>
+        <span id="status-text">Ready — pick an airport to begin.</span>
+      </div>
+      <div class="status-right">
+        <span id="phase-pill" class="phase-pill" hidden>SCHEDULED</span>
+        <span id="clock" class="clock">--:--:--</span>
+      </div>
+    </footer>
+
+    <!-- Toast / error region -->
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <!-- Hidden audio elements (sources injected from config) -->
+    <audio id="audio-airport" loop preload="none"></audio>
+    <audio id="audio-cabin" loop preload="none"></audio>
+
+    <!-- Leaflet JS -->
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+
+    <!-- Configuration (loaded before app, plain global) -->
+    <script src="config.js"></script>
+    <!-- Local secret overrides (gitignored; harmlessly absent in fresh clones) -->
+    <script src="config.local.js" onerror="this.remove()"></script>
+
+    <!-- App entry point (ES module) -->
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

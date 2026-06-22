@@ -1,0 +1,43 @@
+{
+  "airlines": [
+    { "name": "United Airlines", "iata": "UA", "icao": "UAL", "callsign": "UNITED" },
+    { "name": "American Airlines", "iata": "AA", "icao": "AAL", "callsign": "AMERICAN" },
+    { "name": "Delta Air Lines", "iata": "DL", "icao": "DAL", "callsign": "DELTA" },
+    { "name": "British Airways", "iata": "BA", "icao": "BAW", "callsign": "SPEEDBIRD" },
+    { "name": "Lufthansa", "iata": "LH", "icao": "DLH", "callsign": "LUFTHANSA" },
+    { "name": "Air France", "iata": "AF", "icao": "AFR", "callsign": "AIRFRANS" },
+    { "name": "KLM", "iata": "KL", "icao": "KLM", "callsign": "KLM" },
+    { "name": "Emirates", "iata": "EK", "icao": "UAE", "callsign": "EMIRATES" },
+    { "name": "Qatar Airways", "iata": "QR", "icao": "QTR", "callsign": "QATARI" },
+    { "name": "Singapore Airlines", "iata": "SQ", "icao": "SIA", "callsign": "SINGAPORE" },
+    { "name": "Cathay Pacific", "iata": "CX", "icao": "CPA", "callsign": "CATHAY" },
+    { "name": "Japan Airlines", "iata": "JL", "icao": "JAL", "callsign": "JAPANAIR" },
+    { "name": "Qantas", "iata": "QF", "icao": "QFA", "callsign": "QANTAS" },
+    { "name": "Turkish Airlines", "iata": "TK", "icao": "THY", "callsign": "TURKISH" },
+    { "name": "Iberia", "iata": "IB", "icao": "IBE", "callsign": "IBERIA" }
+  ],
+  "aircraft": [
+    { "type": "Airbus A320neo", "code": "A20N", "cruiseSpeedKt": 450, "cruiseAltFt": 37000 },
+    { "type": "Airbus A321", "code": "A321", "cruiseSpeedKt": 455, "cruiseAltFt": 36000 },
+    { "type": "Airbus A330-300", "code": "A333", "cruiseSpeedKt": 470, "cruiseAltFt": 39000 },
+    { "type": "Airbus A350-900", "code": "A359", "cruiseSpeedKt": 488, "cruiseAltFt": 41000 },
+    { "type": "Airbus A380-800", "code": "A388", "cruiseSpeedKt": 490, "cruiseAltFt": 43000 },
+    { "type": "Boeing 737-800", "code": "B738", "cruiseSpeedKt": 447, "cruiseAltFt": 36000 },
+    { "type": "Boeing 737 MAX 8", "code": "B38M", "cruiseSpeedKt": 453, "cruiseAltFt": 37000 },
+    { "type": "Boeing 787-9 Dreamliner", "code": "B789", "cruiseSpeedKt": 488, "cruiseAltFt": 40000 },
+    { "type": "Boeing 777-300ER", "code": "B77W", "cruiseSpeedKt": 490, "cruiseAltFt": 38000 },
+    { "type": "Boeing 747-8", "code": "B748", "cruiseSpeedKt": 493, "cruiseAltFt": 39000 }
+  ],
+  "terminals": ["A", "B", "C", "D", "E", "1", "2", "3"],
+  "curatedRoutes": [
+    { "origin": "JFK", "destinations": ["LHR", "CDG", "LAX", "SFO", "MIA", "FRA", "DXB", "GRU"] },
+    { "origin": "LHR", "destinations": ["JFK", "DXB", "SIN", "HKG", "FRA", "MAD", "BOS", "SYD"] },
+    { "origin": "LAX", "destinations": ["JFK", "NRT", "SYD", "SFO", "ORD", "HND", "ICN", "MEX"] },
+    { "origin": "DXB", "destinations": ["LHR", "JFK", "SIN", "BOM", "DEL", "CDG", "SYD", "HKG"] },
+    { "origin": "SIN", "destinations": ["LHR", "DXB", "HKG", "SYD", "NRT", "ICN", "BOM", "MEL"] },
+    { "origin": "CDG", "destinations": ["JFK", "DXB", "FCO", "MAD", "LHR", "AMS", "GRU", "CAI"] },
+    { "origin": "FRA", "destinations": ["JFK", "LHR", "PEK", "PVG", "DXB", "VIE", "ZRH", "MUC"] },
+    { "origin": "HND", "destinations": ["LAX", "SIN", "HKG", "ICN", "PEK", "SYD", "SFO", "DXB"] },
+    { "origin": "SYD", "destinations": ["LAX", "SIN", "HKG", "MEL", "DXB", "LHR", "NRT", "DOH"] }
+  ]
+}

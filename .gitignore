@@ -1,0 +1,13 @@
+# Local audio assets (binary) — add your own, see assets/audio/README.md
+assets/audio/*.mp3
+assets/audio/*.ogg
+assets/audio/*.wav
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local secrets / overrides
+config.local.js
