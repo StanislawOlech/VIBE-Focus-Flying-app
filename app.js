@@ -17,13 +17,13 @@
  */
 
 import { AirportService } from "./js/airports.js";
-import { FlightService } from "./js/flights.js";
+import { FlightService, fetchRoute, estimateArrival } from "./js/flights.js";
 import { MapController } from "./js/map.js";
 import { FlightStateMachine, PHASE_LABELS } from "./js/flightState.js";
 import { Tracker } from "./js/tracking.js";
 import { AudioController } from "./js/audio.js";
 import { UIController } from "./js/ui.js";
-import { debounce, fmtNum } from "./js/util.js";
+import { debounce, fmtNum, fmtTime } from "./js/util.js";
 
 class App {
   constructor() {
@@ -118,6 +118,7 @@ class App {
       this.currentDepartures = departures;
       this.ui.renderDepartures(departures, (f) => this.selectFlight(f));
       const live = departures.live && !departures.liveFailed;
+      if (live) this._enrichLiveDestinations(departures);
       this.ui.setStatus(
         live
           ? `${departures.length} live aircraft near ${airport.name}. Pick one to track in real time.`
@@ -128,6 +129,30 @@ class App {
       console.error(err);
       this.ui.showDeparturesError("Departure data unavailable.");
       this.ui.setStatus("Departure data unavailable.", "error");
+    }
+  }
+
+  /**
+   * Live ADS-B lists carry no destination, so look each one up by
+   * callsign and fill in the destination city + arrival estimate as the
+   * results arrive. A per-selection token prevents stale lookups from a
+   * previously selected airport writing into the current list.
+   */
+  _enrichLiveDestinations(departures) {
+    const token = (this._enrichToken = Symbol("enrich"));
+    for (const f of departures) {
+      if (!f.live || !f.callsign) continue;
+      fetchRoute(f.callsign).then((route) => {
+        if (this._enrichToken !== token) return;
+        if (!route || !route.destination) {
+          this.ui.updateLiveCardRoute(f.id, "Destination unknown", "");
+          return;
+        }
+        f.routeDestination = route.destination;
+        const est = estimateArrival(route.destination, f.snapshot);
+        const etaText = est ? `arrives ~${fmtTime(est.eta)}` : "";
+        this.ui.updateLiveCardRoute(f.id, route.destination.city, etaText);
+      });
     }
   }
 
@@ -179,6 +204,24 @@ class App {
     const tracker = new Tracker(flight, this.cfg);
     this.session = { flight, machine: null, tracker };
 
+    // Resolve the real destination (ADS-B carries none) and show the
+    // arrival estimate. Reuses the per-session enrich token so a stale
+    // lookup from another selection never overwrites this panel.
+    if (flight.callsign) {
+      fetchRoute(flight.callsign).then((route) => {
+        if (!this.session || this.session.flight !== flight) return;
+        if (!route || !route.destination) {
+          this.ui.setDestination("Unknown", "destination not in database");
+          return;
+        }
+        flight.routeDestination = route.destination;
+        this._updateLiveArrival(flight, flight.snapshot);
+        this.ui.showHUD(flight); // refresh HUD destination city
+      });
+    } else {
+      this.ui.setDestination("Unknown", "no callsign to resolve route");
+    }
+
     let firstFix = !!snap;
     tracker.on("phase", (phase) => {
       this.ui.updateStepper(phase);
@@ -192,6 +235,7 @@ class App {
       this.ui.setLiveStatus(
         `${pos.status} · ${pos.onGround ? "on ground" : fmtNum(pos.altitudeFt) + " ft"}`
       );
+      if (flight.routeDestination) this._updateLiveArrival(flight, pos);
       if (!firstFix) {
         firstFix = true;
         this.map.focusAircraft(pos.lat, pos.lon, pos.onGround ? 11 : 7);
@@ -223,6 +267,15 @@ class App {
       "ok",
       5000
     );
+  }
+
+  /** Recompute and render the destination city + arrival estimate. */
+  _updateLiveArrival(flight, pos) {
+    const dest = flight.routeDestination;
+    if (!dest || !pos) return;
+    const est = estimateArrival(dest, pos);
+    const etaText = est ? `arrives ~${fmtTime(est.eta)}` : "en route";
+    this.ui.setDestination(dest.city, etaText);
   }
 
   _onPhase(phase, flight) {

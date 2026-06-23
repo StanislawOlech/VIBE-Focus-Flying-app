@@ -204,22 +204,32 @@ export class UIController {
     const altLine = f.snapshot.onGround
       ? "on ground"
       : `${fmtNum(f.snapshot.altitudeFt)} ft · ${fmtNum(f.snapshot.speedKt)} kt`;
+    const destInit = f.callsign ? "Looking up destination…" : "Destination unknown";
     return `
       <div class="flight-card" data-id="${f.id}">
         <div class="fc-top">
           <span class="fc-flight">${f.flightNumber || f.registration || f.icao24}</span>
           <span class="fc-status ${cls}">${f.liveStatus}</span>
         </div>
-        <div class="fc-route">${f.aircraft.type}</div>
+        <div class="fc-route" data-dest="${f.id}">→ ${destInit}</div>
         <div class="fc-sub">
-          <span>${f.airline.name}</span>
-          <span>${f.registration || f.icao24}</span>
+          <span>${f.aircraft.type}</span>
+          <span data-eta="${f.id}"></span>
         </div>
         <div class="fc-sub">
           <span>${altLine}</span>
           <span>${dist}</span>
         </div>
       </div>`;
+  }
+
+  /** Fill in a live card's resolved destination city + arrival estimate. */
+  updateLiveCardRoute(id, destCity, etaText) {
+    const list = this.el.departuresList;
+    const dest = list.querySelector(`[data-dest="${CSS.escape(id)}"]`);
+    if (dest) dest.textContent = `→ ${destCity}`;
+    const eta = list.querySelector(`[data-eta="${CSS.escape(id)}"]`);
+    if (eta) eta.textContent = etaText || "";
   }
 
   selectFlightCard(id) {
@@ -247,20 +257,20 @@ export class UIController {
         <div class="detail-head">
           <div>
             <div class="detail-flight">${flight.flightNumber || flight.registration || flight.icao24}</div>
-            <div class="detail-airline">${flight.airline.name} · ${flight.aircraft.type}</div>
+            <div class="detail-airline">${flight.aircraft.type}</div>
           </div>
           <span class="fc-status ph-airborne" id="detail-status">${flight.liveStatus}</span>
         </div>
 
         <div class="detail-route">
           <div class="endpoint">
-            <div class="code">${flight.origin.iata}</div>
-            <div class="city">near ${flight.origin.city}</div>
+            <div class="code">${flight.origin.city}</div>
+            <div class="city">${flight.origin.name}</div>
           </div>
           <div class="route-line">● live</div>
           <div class="endpoint">
-            <div class="code">${flight.registration || "—"}</div>
-            <div class="city">live ADS-B</div>
+            <div class="code" id="detail-dest-city">${flight.callsign ? "…" : "—"}</div>
+            <div class="city" id="detail-dest-eta">${flight.callsign ? "looking up route" : "destination unknown"}</div>
           </div>
         </div>
 
@@ -292,13 +302,13 @@ export class UIController {
 
       <div class="detail-route">
         <div class="endpoint">
-          <div class="code">${flight.origin.iata}</div>
-          <div class="city">${flight.origin.city}</div>
+          <div class="code">${flight.origin.city}</div>
+          <div class="city">${flight.origin.name}</div>
         </div>
         <div class="route-line">✈ ${fmtNum(flight.distanceKm)} km</div>
         <div class="endpoint">
-          <div class="code">${flight.destination.iata}</div>
-          <div class="city">${flight.destination.city}</div>
+          <div class="code">${flight.destination.city}</div>
+          <div class="city">${flight.destination.name}</div>
         </div>
       </div>
 
@@ -322,6 +332,14 @@ export class UIController {
   setLiveStatus(text) {
     const v = document.getElementById("cd-value");
     if (v) v.textContent = text;
+  }
+
+  /** Fill the destination endpoint with a resolved city + arrival estimate. */
+  setDestination(destCity, etaText) {
+    const c = document.getElementById("detail-dest-city");
+    const e = document.getElementById("detail-dest-eta");
+    if (c) c.textContent = destCity || "—";
+    if (e) e.textContent = etaText || "";
   }
 
   updateStepper(phase) {
@@ -380,8 +398,10 @@ export class UIController {
   showHUD(flight) {
     this.el.hud.hidden = false;
     this.el.hudFlight.textContent = flight.flightNumber || flight.registration || flight.icao24;
-    this.el.hudOrigin.textContent = flight.origin.iata;
-    this.el.hudDest.textContent = flight.live ? (flight.registration || "live") : flight.destination.iata;
+    this.el.hudOrigin.textContent = flight.origin.city;
+    this.el.hudDest.textContent = flight.live
+      ? (flight.routeDestination ? flight.routeDestination.city : "…")
+      : flight.destination.city;
     const progLabel = this.el.hudProgress.previousElementSibling;
     if (progLabel) progLabel.textContent = flight.live ? "Phase" : "Progress";
   }

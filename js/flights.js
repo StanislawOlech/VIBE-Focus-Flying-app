@@ -19,7 +19,7 @@
  * elsewhere (flightState.js, tracking.js).
  */
 
-import { makeRng, hashCode, pick, randInt, jitter } from "./util.js";
+import { makeRng, hashCode, pick, randInt, jitter, ktToKmh } from "./util.js";
 import { distanceKm } from "./geo.js";
 
 export class FlightService {
@@ -254,6 +254,75 @@ function scoreDeparting(onGround, altFt, rateFpm, distNm) {
   if (altFt < 8000 && rateFpm > 150) return near < 25 ? 90 : 60; // climbing out
   if (altFt < 9000 && rateFpm < -150) return 20; // arriving
   return 40 - Math.min(39, near); // overhead/cruising, prefer closer
+}
+
+/* ----------------------------------------------------------------
+ * Route lookup. Live ADS-B carries no scheduled destination, so we
+ * resolve the real origin → destination route by callsign using the
+ * community adsbdb.com API (keyless, CORS-enabled). Lookups are cached
+ * per callsign for the session and fail soft (resolve to null) so the
+ * UI can show "destination unknown" rather than breaking.
+ * ---------------------------------------------------------------- */
+const _routeCache = new Map();
+
+export function fetchRoute(callsign) {
+  const cs = (callsign || "").trim().toUpperCase();
+  if (!cs) return Promise.resolve(null);
+  if (_routeCache.has(cs)) return _routeCache.get(cs);
+
+  const p = (async () => {
+    try {
+      const res = await fetch(
+        `https://api.adsbdb.com/v0/callsign/${encodeURIComponent(cs)}`,
+        { headers: { Accept: "application/json" } }
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      const fr = data && data.response && data.response.flightroute;
+      if (!fr || !fr.destination) return null;
+      return {
+        origin: _routeAirport(fr.origin),
+        destination: _routeAirport(fr.destination)
+      };
+    } catch (err) {
+      console.warn("[FlightService] route lookup failed:", err);
+      return null;
+    }
+  })();
+
+  _routeCache.set(cs, p);
+  return p;
+}
+
+function _routeAirport(a) {
+  if (!a) return null;
+  return {
+    iata: a.iata_code || "",
+    icao: a.icao_code || "",
+    name: a.name || "",
+    city: a.municipality || a.name || a.iata_code || "Unknown",
+    country: a.country_name || "",
+    lat: a.latitude,
+    lon: a.longitude
+  };
+}
+
+/**
+ * Rough arrival-time estimate from the aircraft's current position and
+ * ground speed toward a known destination. Uses a nominal cruise speed
+ * when the aircraft is slow or still on the ground.
+ */
+export function estimateArrival(destination, pos) {
+  if (!destination || !pos || pos.lat == null || pos.lon == null) return null;
+  if (destination.lat == null || destination.lon == null) return null;
+  const remainingKm = distanceKm({ lat: pos.lat, lon: pos.lon }, destination);
+  const spdKt = pos.speedKt || 0;
+  const effKt = spdKt > 150 ? spdKt : 450; // nominal cruise if slow/on ground
+  const hours = remainingKm / ktToKmh(effKt);
+  return {
+    remainingKm: Math.round(remainingKm),
+    eta: new Date(Date.now() + hours * 3600 * 1000)
+  };
 }
 
 /** Slight per-flight variation of cruise figures for realism. */
