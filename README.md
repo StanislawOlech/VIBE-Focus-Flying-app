@@ -260,4 +260,4 @@ The app handles each of these gracefully (status bar + toast):
 
 - Map tiles © OpenStreetMap contributors, © CARTO.
 - Airport/airline/aircraft data in `data/` is a small hand-curated demo set.
-- Bring your own audio assets (see notes above).
+- Audio assets are sourced from [Pixabay](https://pixabay.com/) (royalty-free).
